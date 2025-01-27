@@ -1,0 +1,31 @@
+{
+  "manifest_version": 2,
+  "name": "America Versed",
+  "version": "1.0",
+
+  "description": "Text blocks that contain triggering content and replaces them with poetry.",
+  "icons": {
+    "48": "icons/border-48.png"
+  },
+
+  "browser_action": {
+    "default_icon": "icons/border-48.png",
+    "default_title": "America Versed",
+    "default_popup": "popup/americaversed-prefs.html"
+  },
+  "permissions": [ "<all_urls>", "webRequest", "contextMenus" ],
+  "web_accessible_resources": [
+    "modal.html",
+    "modal.css"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["americaversed.js"]
+    }
+  ],
+  "background": {
+      "scripts": ["background.js"]
+  }
+}
+
