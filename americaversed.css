@@ -49,6 +49,8 @@ margin: auto;
 /* display: flex; */
 overflow-x: none;
 overflow-y: scroll;
+background: #f2f0ef;
+color: #212427;
 }
 
 .mapa-modal-footer {
@@ -102,4 +104,16 @@ vertical-align: middle;
 
 .mapa-poem {
 line-height: 1.3;
+}
+
+.getinstance:before {
+content:'';
+display: inline-block;
+width: 16px;
+height: 16px;
+margin-right: 5px;
+vertical-align:middle;
+background-image: url('https://getinstance.com/favicon-16x16.png');
+background-size: cover;
+background-repeat: no-repeat;
 }
