@@ -1,17 +1,6 @@
-//document.body.style.border = "5px solid blue";
-//let elements = document.body.innerHTML.search("Trump");
 /*
-var html = document.body.innerHTML;
-regex = /Trump/g;
-wrapped = html.replace(regex, function (name) {
-	name = name.trim();
-	name = ' SOME FUCKING IDIOT ';
-	return name;
-});
-document.body.innerHTML = wrapped;
-*/
-
-
+ * global settings
+ */
 let registry = {
     poem: ["the boy stood on the burning deck", "hats and hats and hats"],
     _num: 0,
@@ -25,7 +14,6 @@ let registry = {
 }
 
 browser.runtime.onMessage.addListener(data => {
-  //const { trigger } = data;
   if (data.trigger === 'tempreveal') {
     tempReveal();
     window.setTimeout(tempRestore, 10000);
@@ -35,9 +23,11 @@ browser.runtime.onMessage.addListener(data => {
   }
   if (data.trigger === 'menuchangestatusstate') {
     if (data.enabled && ! registry.pageenabled) {
-        // findme  
+        alert("would enable");
+        registry.pageenabled = false;
     } else {
-
+        alert("would disable");
+        registry.pageenabled = false;
     }
   }
 
@@ -104,7 +94,6 @@ let getLinesRandom = function() {
     }
 
     let str = fragment.join("\n");
-    //console.log("str is " + str);
     return str;
 }
 
@@ -155,14 +144,6 @@ async function downloadPoem() {
 let applyOverwrite = function() {
     console.log("applying");
     let keyword = "Trump";
-    /*
-    var xpath = "//*[contains(text(), \""+keyword+"\")";
-    xpath +=       " or ";
-    xpath +=       "contains(@aria-label, \""+keyword+"\")]";
-    var xpath = "//*[contains(text(), \""+keyword+"\")]";
-    var xpath = "//*[contains(normalize-space(text()), \""+keyword+"\")]";
-    var xpath = "//*[contains(normalize-space(@text), \""+keyword+"\")]";
-    */
     var xpath = "//*[text()[contains(., \""+keyword+"\")]]";
     const nodesSnapshot = document.evaluate(
       xpath,
@@ -172,15 +153,12 @@ let applyOverwrite = function() {
       null,
     );
 
-    //console.log(JSON.stringify(iterator));
     let els = [];
-    //let msg = "More Tiresome MAGA Nonsense";
     for (let i = 0; i < nodesSnapshot.snapshotLength; i++) {
       let el = nodesSnapshot.snapshotItem(i)
 
 
       // prevent element from being re-mangled on future change
-      // if (el.dataset.mapa_managed) {
       if (el.classList.contains("mapa-managed") ) {
         continue;
       }
@@ -190,32 +168,15 @@ let applyOverwrite = function() {
       el.dataset.mapa_orig = el.innerHTML;
       let lines = getLines();
       let msg = lines;
-      /*
-      let reveal = document.createElement("span");
-      reveal.setAttribute("title", el.innerHTML);
-      reveal.appendChild(document.createTextNode("[R]"));
-      */
-
 
       el.innerHTML = '';
-      //el.appendChild(reveal);
       el.appendChild(document.createTextNode(msg))
       el.dataset.mapa_poem = el.innerHTML;
-
-      /*
-      reveal.addEventListener("click", function(e) {
-        alert(el.dataset.mapa_orig);
-        console.log("clicked");
-        e.preventDefault(); 
-      }, true);
-      */
 
       el.addEventListener("click", function() {
         alert(el.dataset.mapa_orig);
         return false; 
       });
-      //nodesSnapshot.snapshotItem(i).setAttribute("aria-label", msg);
-      //console.log(msg);
     }
     registry.reparseswitch = false;
 }
@@ -245,11 +206,8 @@ const callback = (mutationList, observer) => {
 const observer = new MutationObserver(callback);
 let req = new XMLHttpRequest();
 req.onload = function(e) {
-    //console.log("here");
     //if (req.readyState === 4) {
         var response = req.responseText;
-        //var json = JSON.parse(response);
-        //console.log(JSON.stringify(req.responseText));
     //}
 };
 
@@ -271,15 +229,15 @@ let run = function() {
     window.setTimeout(run, 1000);
 }
 
-async function setPoem(msg) {
-    registry.poem=msg;
-}
-
 // send background script the enabled state (so that it shows the correct menu toggle)
 let sending = browser.runtime.sendMessage({
         trigger: "setEnabledState", setting: registry.pageenabled
     });
-sending.then(function(msg) {console.log("got monster: " + msg.response);}, function() {});
+sending.then(function() {}, function() {});
+
+async function setPoem(msg) {
+    registry.poem=msg;
+}
 
 // get poem, apply it, watch for page changes
 const loadAndRun = function() {
@@ -306,23 +264,3 @@ if (registry.pageenabled) {
 // Later, you can stop observing
 // observer.disconnect();
 
-//for (let x=2000; x < 10000; x += 1000) {
-//    window.setTimeout(go, x);
-//}
-/*
-try {
-  let thisNode = iterator.iterateNext();
-
-  while (thisNode) {
-    console.log(thisNode.textContent);
-    thisNode = iterator.iterateNext();
-	els.push(thisNode);
-  }
-} catch (e) {
-  console.error(`Error: Document tree modified during iteration ${e}`);
-}
-
-for (el in els) {
-	el.innerHTML = "More Tiresome MAGA bollocks";
-}
-*/

@@ -42,6 +42,9 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId == "america-versed-showpoem") {
     browser.tabs.sendMessage(tab.id, { trigger: 'showpoem' });
   }
+  if (info.menuItemId == "america-versed-pageenable") {
+    browser.tabs.sendMessage(tab.id, { trigger: 'menuchangestatusstate', status: });
+  }
 });
 
 function handleMessage(request, sender, sendResponse) {
