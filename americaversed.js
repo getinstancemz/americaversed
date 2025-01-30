@@ -43,8 +43,8 @@ let tempReveal = function() {
 }
 
 async function buildPoemModal() {
-    url = browser.runtime.getURL("modal.html");
-    return fetch(chrome.runtime.getURL('modal.html'))
+    url = browser.runtime.getURL("americaversed-poem.html");
+    return fetch(chrome.runtime.getURL('americaversed-poem.html'))
         .then(resp => resp.text())
         .then(html => {
             let modal = document.createElement("div");
@@ -52,11 +52,11 @@ async function buildPoemModal() {
             smodal.innerHTML = html;
             document.body.appendChild(modal);
 
-            let cssURL = browser.runtime.getURL('modal.css')
-            smodal.querySelector(".modal").insertAdjacentHTML(
+            let cssURL = browser.runtime.getURL('americaversed.css')
+            smodal.querySelector(".mapa-modal").insertAdjacentHTML(
                 "beforebegin",
                 "<link rel='stylesheet' href='"+ cssURL +"' />");
-            smodal.querySelector(".modal").style.display = "block";
+            smodal.querySelector(".mapa-modal").style.display = "block";
             let poem = registry.poem.lines;
             let spacepoem = [];
             let regex = /  |\t/;
@@ -66,10 +66,10 @@ async function buildPoemModal() {
             console.log("space poem: ");
             console.log(spacepoem);
             let pagestr = "<h2>"+registry.poem.title+"</h2>\n\n";
-            pagestr += "<p>by "+registry.poem.author+"</p>\n\n";
-            pagestr += "<div>"+spacepoem.join("<br>")+"</div>\n";
-            smodal.querySelector(".modal-body").innerHTML = pagestr;
-            smodal.querySelector(".close").onclick = () => modal.remove();
+            pagestr += "<p><em>by "+registry.poem.author+"</em></p>\n\n";
+            pagestr += "<div class='mapa-poem'>"+spacepoem.join("<br>")+"</div>\n";
+            smodal.querySelector(".mapa-modal-body").innerHTML = pagestr;
+            smodal.querySelector(".mapa-close").onclick = () => modal.remove();
         ;
         });
 }
