@@ -255,8 +255,8 @@ let run = function() {
             } else {
                 mainswitch = val.enabled; 
             }
-            console.log(val);
-            console.log("running with mainswitch: "+ mainswitch);
+            //console.log(val);
+            //console.log("running with mainswitch: "+ mainswitch);
             dorun(mainswitch);            
         }
     );
