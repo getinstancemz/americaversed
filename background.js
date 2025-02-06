@@ -28,7 +28,7 @@ browser.contextMenus.create(
   {
     id: "america-versed-pageenable",
     parentId: "america-versed-menu1",
-    type: "radio",
+    type: "checkbox",
     title: "Active for page",
     contexts: ["all"],
     checked: true,
@@ -41,6 +41,10 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
   }
   if (info.menuItemId == "america-versed-showpoem") {
     browser.tabs.sendMessage(tab.id, { trigger: 'showpoem' });
+  }
+  if (info.menuItemId == "america-versed-pageenable") {
+    console.log("checked: " + info.checked);
+    browser.tabs.sendMessage(tab.id, { trigger: 'menuchangestatusstate', status: info.checked});
   }
 });
 
