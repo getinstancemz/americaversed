@@ -18,20 +18,50 @@ browser.runtime.onMessage.addListener(data => {
     tempReveal();
     window.setTimeout(tempRestore, 10000);
   }
+
   if (data.trigger === 'showpoem') {
     buildPoemModal();
   }
+
   if (data.trigger === 'menuchangestatusstate') {
-    if (data.enabled && ! registry.pageenabled) {
-        alert("would enable");
-        registry.pageenabled = false;
+
+    console.log("data:");
+    console.log(data);
+
+    if (data.status && ! registry.pageenabled) {
+        registry.pageenabled = true;
+        run();
     } else {
-        alert("would disable");
-        registry.pageenabled = false;
+        disable();
     }
   }
 
+  if (data.trigger === 'poweroff') {
+    // run() checks whether to proceed
+    tearDown();
+  }
+
+  if (data.trigger === 'poweron') {
+    // run() checks whether to proceed
+    run();
+  }
 });
+
+
+
+let disable = function() {
+    tearDown();
+    registry.pageenabled = false;
+}
+
+let tearDown = function() {
+    const els = document.querySelectorAll(".mapa-managed");
+    for (let i = 0; i < els.length; i++) {
+      let el = els[i];
+      el.innerHTML = el.dataset['mapa_orig'];
+      el.classList.remove("mapa-managed");
+    }
+}
 
 let tempReveal = function() {
     //const els = document.getElementsByClassName("mapa-managed");
@@ -188,7 +218,7 @@ const targetNode = document;
 const config = { attributes: true, childList: true, subtree: true };
 
 // Callback function to execute when mutations are observed
-const callback = (mutationList, observer) => {
+const mutation_callback = (mutationList, observer) => {
   for (const mutation of mutationList) {
     if (mutation.type === "childList") {
       console.log("A child node has been added or removed.");
@@ -203,11 +233,11 @@ const callback = (mutationList, observer) => {
 };
 
 // Create an observer instance linked to the callback function
-const observer = new MutationObserver(callback);
+const observer = new MutationObserver(mutation_callback);
 let req = new XMLHttpRequest();
 req.onload = function(e) {
     //if (req.readyState === 4) {
-        var response = req.responseText;
+    var response = req.responseText;
     //}
 };
 
@@ -217,16 +247,35 @@ function getRandomInt(max) {
 }
 
 let run = function() {
-    //console.log("running");
-    if (registry.reparseswitch || registry.playruns < 5) {
-        console.log("applying");
-        applyOverwrite();
-        registry.playruns++;
+    browser.storage.sync.get("enabled").then(
+        function(val) {
+            let mainswitch = true;
+            if (! val.hasOwnProperty("enabled")) {
+                mainswitch = true;
+            } else {
+                mainswitch = val.enabled; 
+            }
+            console.log(val);
+            console.log("running with mainswitch: "+ mainswitch);
+            dorun(mainswitch);            
+        }
+    );
 
-    } else {
-        //console.log("no apply");
+    function dorun(mainswitch) {
+        if (! registry.pageenabled || ! mainswitch) {
+            console.log("will not run - disabled");
+            console.log("local switch: "+registry.pageenabled);
+            console.log("main  switch: "+mainswitch);
+            return;
+        }
+        if (registry.reparseswitch || registry.playruns < 5) {
+            console.log("applying");
+            applyOverwrite();
+            registry.playruns++;
+
+        }
+        window.setTimeout(run, 1000);
     }
-    window.setTimeout(run, 1000);
 }
 
 // send background script the enabled state (so that it shows the correct menu toggle)

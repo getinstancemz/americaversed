@@ -4,6 +4,13 @@
   "version": "1.0",
 
   "description": "Text blocks that contain triggering content and replaces them with poetry.",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "americaversed@getinstance.com"
+    }
+  },
+
   "icons": {
     "48": "icons/americaversed.png"
   },
@@ -13,11 +20,14 @@
     "default_title": "America Versed",
     "default_popup": "popup/americaversed-prefs.html"
   },
-  "permissions": [ "<all_urls>", "webRequest", "contextMenus" ],
+  "permissions": [ "<all_urls>", "storage", "webRequest", "contextMenus" ],
   "web_accessible_resources": [
     "americaversed-poem.html",
     "americaversed.css"
   ],
+  "options_ui": {
+    "page": "settings/dashboard.html"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
