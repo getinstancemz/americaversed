@@ -12,11 +12,16 @@
   },
 
   "icons": {
-    "48": "icons/americaversed.png"
+    "128": "imgs/americaversed.svg",
+    "16": "imgs/americaversed.svg",
+    "32": "imgs/americaversed.svg",
+    "48": "imgs/americaversed.svg",
+    "64": "imgs/americaversed.svg",
+    "96": "imgs/americaversed.svg"
   },
 
   "browser_action": {
-    "default_icon": "icons/americaversed.png",
+    "default_icon": "imgs/americaversed.svg",
     "default_title": "America Versed",
     "default_popup": "popup/americaversed-prefs.html"
   },
