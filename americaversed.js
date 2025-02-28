@@ -38,6 +38,28 @@ const americaversed = (function() {
         return _playruns;
     };
 
+    /**
+     * poem related
+     */
+    let downloadPoem = async () => {
+        let url = "https://poetrydb.org/random";
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    "Content-Type": "application/json",
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`Response status: ${response.status}`);
+            }
+
+            const json = await response.json();
+            console.log("LINES:"+JSON.stringify(json));
+            return json[0];
+        } catch (error) {
+            console.error(error.message);
+        }
+    }
 
     let buildPoemModal = async () => {
         return fetch(chrome.runtime.getURL('americaversed-poem.html'))
@@ -110,12 +132,29 @@ const americaversed = (function() {
         _reparseswitch = false;
     };
 
+    let tearDown = function() {
+        const els = document.querySelectorAll(".mapa-managed");
+        for (let i = 0; i < els.length; i++) {
+            let el = els[i];
+            el.innerHTML = el.dataset['mapa_orig'];
+            el.classList.remove("mapa-managed");
+        }
+    }
+
     let tempReveal = function() {
         //const els = document.getElementsByClassName("mapa-managed");
         const els = document.querySelectorAll(".mapa-managed");
         for (let i = 0; i < els.length; i++) {
             let el = els[i];
             el.innerHTML = el.dataset['mapa_orig'];
+        }
+    }
+
+    let tempRestore = function() {
+        const els = document.querySelectorAll(".mapa-managed");
+        for (let i = 0; i < els.length; i++) {
+            let el = els[i];
+            el.innerHTML = el.dataset['mapa_poem'];
         }
     }
 
@@ -146,8 +185,11 @@ const americaversed = (function() {
         pageenabled: pageenabled,
         applyOverwrite: applyOverwrite,
         tempReveal: tempReveal,
+        tempRestore: tempRestore,
         disable: disable,
         buildPoemModal: buildPoemModal,
+        downloadPoem: downloadPoem,
+        tearDown: tearDown,
 
         // getsetters
         reparseswitch: reparseswitch,
@@ -158,11 +200,13 @@ const americaversed = (function() {
 
 // findme
 
-// events
+/**
+ * events
+ */
 browser.runtime.onMessage.addListener(data => {
   if (data.trigger === 'tempreveal') {
     americaversed.tempReveal();
-    window.setTimeout(tempRestore, 10000);
+    window.setTimeout(americaversed.tempRestore, 10000);
   }
 
   if (data.trigger === 'showpoem') {
@@ -184,7 +228,7 @@ browser.runtime.onMessage.addListener(data => {
 
   if (data.trigger === 'poweroff') {
     // run() checks whether to proceed
-    tearDown();
+    americaversed.tearDown();
   }
 
   if (data.trigger === 'poweron') {
@@ -194,78 +238,42 @@ browser.runtime.onMessage.addListener(data => {
 });
 
 
+const mutationobserver = (function() {
+    // Select the node that will be observed for mutations
+    let targetNode = document;
 
+    // Options for the observer (which mutations to observe)
+    let config = {attributes: true, childList: true, subtree: true};
 
-let tearDown = function() {
-    const els = document.querySelectorAll(".mapa-managed");
-    for (let i = 0; i < els.length; i++) {
-      let el = els[i];
-      el.innerHTML = el.dataset['mapa_orig'];
-      el.classList.remove("mapa-managed");
+    // Callback function to execute when mutations are observed
+    let mutation_callback = (mutationList, observer) => {
+        for (const mutation of mutationList) {
+            if (mutation.type === "childList") {
+                console.log("A child node has been added or removed.");
+                console.log("setting reparseswitch to true");
+                americaversed.reparseswitch(true);
+            }
+    // else if (mutation.type === "attributes") {
+    //      console.log(`The ${mutation.attributeName} attribute was modified.`);
+    //      reparseswitch = true;
+    //    }
+        }
+    };
+    // Create an observer instance linked to the callback function
+    let observer = new MutationObserver(mutation_callback);
+    let req = new XMLHttpRequest();
+    req.onload = function(e) {
+        //if (req.readyState === 4) {
+        var response = req.responseText;
+        //}
+    };
+    let watch = function() {
+        observer.observe(targetNode, config);
     }
-}
-
-
-let tempRestore = function() {
-    const els = document.querySelectorAll(".mapa-managed");
-    for (let i = 0; i < els.length; i++) {
-      let el = els[i];
-      el.innerHTML = el.dataset['mapa_poem'];
+    return {
+        watch: watch
     }
-}
-
-async function downloadPoem() {
-  let url = "https://poetrydb.org/random";
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-      }
-    });
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
-    }
-
-    const json = await response.json();
-    console.log("LINES:"+JSON.stringify(json));
-    return json[0];
-  } catch (error) {
-    console.error(error.message);
-  }
-}
-
-
-// Select the node that will be observed for mutations
-const targetNode = document;
-
-// Options for the observer (which mutations to observe)
-const config = { attributes: true, childList: true, subtree: true };
-
-// Callback function to execute when mutations are observed
-const mutation_callback = (mutationList, observer) => {
-  for (const mutation of mutationList) {
-    if (mutation.type === "childList") {
-      console.log("A child node has been added or removed.");
-      console.log("setting reparseswitch to true");
-      americaversed.reparseswitch(true);
-    }
-// else if (mutation.type === "attributes") {
-//      console.log(`The ${mutation.attributeName} attribute was modified.`);
-//      reparseswitch = true;
-//    }
-  }
-};
-
-// Create an observer instance linked to the callback function
-const observer = new MutationObserver(mutation_callback);
-let req = new XMLHttpRequest();
-req.onload = function(e) {
-    //if (req.readyState === 4) {
-    var response = req.responseText;
-    //}
-};
-
-
+})();
 
 let run = function() {
     browser.storage.sync.get("enabled").then(
@@ -312,7 +320,7 @@ async function setPoem2(msg) {
 
 // get poem, apply it, watch for page changes
 const loadAndRun = function() {
-    downloadPoem()
+    americaversed.downloadPoem()
         .then(
             async function(msg) {
                 await setPoem2(msg);
@@ -324,7 +332,7 @@ const loadAndRun = function() {
         );
 
     // Start observing the target node for configured mutations
-    observer.observe(targetNode, config);
+    mutationobserver.watch();
 }
 
 // start if page is enabled state
@@ -427,4 +435,29 @@ async function buildPoemModal() {
             smodal.querySelector(".mapa-close").onclick = () => modal.remove();
         });
 }
+
+// mutations observer
+
+
+// Select the node that will be observed for mutations
+const targetNode = document;
+
+// Options for the observer (which mutations to observe)
+const config = { attributes: true, childList: true, subtree: true };
+
+// Callback function to execute when mutations are observed
+const mutation_callback = (mutationList, observer) => {
+  for (const mutation of mutationList) {
+    if (mutation.type === "childList") {
+      console.log("A child node has been added or removed.");
+      console.log("setting reparseswitch to true");
+      americaversed.reparseswitch(true);
+    }
+// else if (mutation.type === "attributes") {
+//      console.log(`The ${mutation.attributeName} attribute was modified.`);
+//      reparseswitch = true;
+//    }
+  }
+};
+
  */
