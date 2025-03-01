@@ -3,8 +3,6 @@ const americaversed = (function() {
     // private but settable
     let _pageenabled =  true;
     let _poem =  { author: "bob", lines: ["the boy stood on the burning deck", "hats and hats and hats"], title: "the boy" };
-    let _reparseswitch = false;
-    let _playruns = 0;
 
     /**
      * accessors
@@ -17,25 +15,11 @@ const americaversed = (function() {
         return _pageenabled;
     };
 
-    let reparseswitch = function(val) {
-        if (typeof val !== 'undefined') {
-            _reparseswitch = val;
-        }
-        return _reparseswitch;
-    };
-
     let poem = function(newpoem) {
         if (typeof newpoem !== 'undefined') {
             _poem = newpoem;
         }
         return _poem;
-    };
-
-    let playruns = function(val) {
-        if (typeof val !== 'undefined') {
-            _playruns = val;
-        }
-        return _playruns;
     };
 
     /**
@@ -129,7 +113,6 @@ const americaversed = (function() {
                 return false;
             });
         }
-        _reparseswitch = false;
     };
 
     let tearDown = function() {
@@ -188,8 +171,15 @@ const americaversed = (function() {
     }
     let applyQueuedReparse = function() {
         console.log("SUCCESSFULLY APPLIED REPARSEWAITING")
+        applyOverwrite();
         reparseWaiting = false;
     }
+
+    /**
+     * operations
+     */
+
+
     return {
         pageenabled: pageenabled,
         applyOverwrite: applyOverwrite,
@@ -198,12 +188,10 @@ const americaversed = (function() {
         disable: disable,
         buildPoemModal: buildPoemModal,
         downloadPoem: downloadPoem,
+        queueReparse: queueReparse,
         tearDown: tearDown,
 
         // getsetters
-        reparseswitch: reparseswitch,
-        queueReparse: queueReparse,
-        playruns: playruns,
         poem: poem,
     };
 }());
@@ -211,7 +199,7 @@ const americaversed = (function() {
 // findme
 
 /**
- * events
+ * events and messaging
  */
 browser.runtime.onMessage.addListener(data => {
   if (data.trigger === 'tempreveal') {
@@ -233,12 +221,14 @@ browser.runtime.onMessage.addListener(data => {
         run();
     } else {
         americaversed.disable();
+        mutationobserver.unwatch();
     }
   }
 
   if (data.trigger === 'poweroff') {
     // run() checks whether to proceed
     americaversed.tearDown();
+    mutationobserver.unwatch();
   }
 
   if (data.trigger === 'poweron') {
@@ -260,8 +250,6 @@ const mutationobserver = (function() {
         for (const mutation of mutationList) {
             if (mutation.type === "childList") {
                 console.log("A child node has been added or removed.");
-                console.log("setting reparseswitch to true");
-                //americaversed.reparseswitch(true);
                 americaversed.queueReparse(true);
             }
     // else if (mutation.type === "attributes") {
@@ -280,9 +268,13 @@ const mutationobserver = (function() {
     };
     let watch = function() {
         observer.observe(targetNode, config);
-    }
+    };
+    let unwatch = function() {
+        observer.disconnect();
+    };
     return {
-        watch: watch
+        watch: watch,
+        unwatch: unwatch
     }
 })();
 
@@ -310,11 +302,8 @@ let run = function() {
         }
         americaversed.applyOverwrite();
         /*
-        let myplayruns = americaversed.playruns();
-        if (americaversed.reparseswitch() || myplayruns < 5) {
             console.log("applying");
             americaversed.applyOverwrite();
-            americaversed.playruns(myplayruns+1);
 
         }
         */
@@ -322,10 +311,9 @@ let run = function() {
     }
 }
 // send background script the enabled state (so that it shows the correct menu toggle)
-let sending = browser.runtime.sendMessage({
-        trigger: "setEnabledState", setting: americaversed.pageenabled()
-    });
-sending.then(function() {}, function() {});
+browser.runtime.sendMessage({
+    trigger: "setEnabledState", setting: americaversed.pageenabled()
+});
 
 async function setPoem2(msg) {
     americaversed.poem(msg);
@@ -335,150 +323,16 @@ async function setPoem2(msg) {
 const loadAndRun = function() {
     console.log("starting");
     if (! americaversed.pageenabled()) {
-        //loadAndRun();
         return;
     }
     americaversed.downloadPoem()
         .then(
-            async function(msg) {
-                await setPoem2(msg);
-            }
+            msg => americaversed.poem(msg),
         ).then(
-            function() {
-                run()
-            }
+            () => run()
         ).then(
-         mutationobserver.watch
+            () => mutationobserver.watch()
         );
-
-    // Start observing the target node for configured mutations
-    // mutationobserver.watch();
 }
 
-//document.addEventListener("DOMContentLoaded", loadAndRun);
 loadAndRun();
-// start if page is enabled state
-
-
-
-// Later, you can stop observing
-// observer.disconnect();
-
-/*
-
-function getRandomInt(max) {
-  return Math.floor(Math.random() * max);
-}
-
-let getLinesRandom = function() {
-    let len = americaversed.poem.lines.length;
-    let fragment;
-    if (len <= 2) {
-        fragment = americaversed.poem.lines;
-    } else {
-        lincount = getRandomInt(len - 2);
-        console.log("lincount" + lincount);
-        fragment = americaversed.poem.lines.slice(lincount, lincount+2);
-    }
-
-    let str = fragment.join("\n");
-    return str;
-}
-
-let applyOverwrite_depr = function() {
-    console.log("applying");
-    let keyword = "Trump";
-    var xpath = "//*[text()[contains(., \""+keyword+"\")]]";
-    const nodesSnapshot = document.evaluate(
-      xpath,
-      document.body,
-      null,
-      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-      null,
-    );
-
-    let els = [];
-    for (let i = 0; i < nodesSnapshot.snapshotLength; i++) {
-      let el = nodesSnapshot.snapshotItem(i)
-
-
-      // prevent element from being re-mangled on future change
-      if (el.classList.contains("mapa-managed") ) {
-        continue;
-      }
-
-      el.dataset.mapa_managed = "yes";
-      el.classList.add("mapa-managed");
-      el.dataset.mapa_orig = el.innerHTML;
-      let lines = getLines();
-      let msg = lines;
-
-      el.innerHTML = '';
-      el.appendChild(document.createTextNode(msg))
-      el.dataset.mapa_poem = el.innerHTML;
-
-      el.addEventListener("click", function() {
-        alert(el.dataset.mapa_orig);
-        return false;
-      });
-    }
-    americaversed.reparseswitch(false);
-}
-
-async function buildPoemModal() {
-    url = browser.runtime.getURL("americaversed-poem.html");
-    return fetch(chrome.runtime.getURL('americaversed-poem.html'))
-        .then(resp => resp.text())
-        .then(html => {
-            let modal = document.createElement("div");
-            let smodal = modal.attachShadow({mode: "open"});
-            smodal.innerHTML = html;
-            document.body.appendChild(modal);
-
-            let cssURL = browser.runtime.getURL('americaversed.css')
-            smodal.querySelector(".mapa-modal").insertAdjacentHTML(
-                "beforebegin",
-                "<link rel='stylesheet' href='"+ cssURL +"' />");
-            smodal.querySelector(".mapa-modal").style.display = "block";
-            let mypoem = americaversed.poem();
-            console.log(mypoem);
-            let spacepoem = [];
-            let regex = /  |\t/;
-            for (let i=0; i < mypoem.lines.length; i++) {
-                spacepoem.push(mypoem.lines[i].replace(regex, "&nbsp;&nbsp;"));
-            }
-            console.log("space poem: ");
-            console.log(spacepoem);
-            let pagestr = "<h2>"+americaversed.poem().title+"</h2>\n\n";
-            pagestr += "<p><em>by "+americaversed.poem().author+"</em></p>\n\n";
-            pagestr += "<div class='mapa-poem'>"+spacepoem.join("<br>")+"</div>\n";
-            smodal.querySelector(".mapa-modal-body").innerHTML = pagestr;
-            smodal.querySelector(".mapa-close").onclick = () => modal.remove();
-        });
-}
-
-// mutations observer
-
-
-// Select the node that will be observed for mutations
-const targetNode = document;
-
-// Options for the observer (which mutations to observe)
-const config = { attributes: true, childList: true, subtree: true };
-
-// Callback function to execute when mutations are observed
-const mutation_callback = (mutationList, observer) => {
-  for (const mutation of mutationList) {
-    if (mutation.type === "childList") {
-      console.log("A child node has been added or removed.");
-      console.log("setting reparseswitch to true");
-      americaversed.reparseswitch(true);
-    }
-// else if (mutation.type === "attributes") {
-//      console.log(`The ${mutation.attributeName} attribute was modified.`);
-//      reparseswitch = true;
-//    }
-  }
-};
-
- */
