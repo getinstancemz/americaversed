@@ -180,7 +180,16 @@ const americaversed = (function() {
         fragment = _poem.lines.slice(lincount, lincount+2);
         return fragment.join(" / ");
     }
-
+    let reparseWaiting = false;
+    let queueReparse = function() {
+        if (! reparseWaiting) {
+            reparseWaiting = setTimeout(() => { applyQueuedReparse(); }, 3000)
+        }
+    }
+    let applyQueuedReparse = function() {
+        console.log("SUCCESSFULLY APPLIED REPARSEWAITING")
+        reparseWaiting = false;
+    }
     return {
         pageenabled: pageenabled,
         applyOverwrite: applyOverwrite,
@@ -193,6 +202,7 @@ const americaversed = (function() {
 
         // getsetters
         reparseswitch: reparseswitch,
+        queueReparse: queueReparse,
         playruns: playruns,
         poem: poem,
     };
@@ -251,7 +261,8 @@ const mutationobserver = (function() {
             if (mutation.type === "childList") {
                 console.log("A child node has been added or removed.");
                 console.log("setting reparseswitch to true");
-                americaversed.reparseswitch(true);
+                //americaversed.reparseswitch(true);
+                americaversed.queueReparse(true);
             }
     // else if (mutation.type === "attributes") {
     //      console.log(`The ${mutation.attributeName} attribute was modified.`);
@@ -297,6 +308,8 @@ let run = function() {
             console.log("main  switch: "+mainswitch);
             return;
         }
+        americaversed.applyOverwrite();
+        /*
         let myplayruns = americaversed.playruns();
         if (americaversed.reparseswitch() || myplayruns < 5) {
             console.log("applying");
@@ -304,10 +317,10 @@ let run = function() {
             americaversed.playruns(myplayruns+1);
 
         }
-        window.setTimeout(run, 1000);
+        */
+        //window.setTimeout(run, 1000);
     }
 }
-
 // send background script the enabled state (so that it shows the correct menu toggle)
 let sending = browser.runtime.sendMessage({
         trigger: "setEnabledState", setting: americaversed.pageenabled()
@@ -320,6 +333,11 @@ async function setPoem2(msg) {
 
 // get poem, apply it, watch for page changes
 const loadAndRun = function() {
+    console.log("starting");
+    if (! americaversed.pageenabled()) {
+        //loadAndRun();
+        return;
+    }
     americaversed.downloadPoem()
         .then(
             async function(msg) {
@@ -329,16 +347,19 @@ const loadAndRun = function() {
             function() {
                 run()
             }
+        ).then(
+         mutationobserver.watch
         );
 
     // Start observing the target node for configured mutations
-    mutationobserver.watch();
+    // mutationobserver.watch();
 }
 
+//document.addEventListener("DOMContentLoaded", loadAndRun);
+loadAndRun();
 // start if page is enabled state
-if (americaversed.pageenabled()) {
-    loadAndRun();
-}
+
+
 
 // Later, you can stop observing
 // observer.disconnect();
