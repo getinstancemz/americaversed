@@ -3,6 +3,8 @@ const americaversed = (function() {
     // private but settable
     let _pageenabled =  true;
     let _poem =  { author: "bob", lines: ["the boy stood on the burning deck", "hats and hats and hats"], title: "the boy" };
+    let _mainswitch = true;
+    let _reparseWaiting = false;
 
     /**
      * accessors
@@ -13,13 +15,6 @@ const americaversed = (function() {
             _pageenabled = val;
         }
         return _pageenabled;
-    };
-
-    let poem = function(newpoem) {
-        if (typeof newpoem !== 'undefined') {
-            _poem = newpoem;
-        }
-        return _poem;
     };
 
     /**
@@ -41,7 +36,7 @@ const americaversed = (function() {
             console.log("LINES:"+JSON.stringify(json));
             return json[0];
         } catch (error) {
-            console.error(error.message);
+            console.error(`americaversed download poem error ${error.message}`);
         }
     }
 
@@ -67,8 +62,8 @@ const americaversed = (function() {
                 }
                 console.log("space poem: ");
                 console.log(spacepoem);
-                let pagestr = "<h2>"+americaversed.poem().title+"</h2>\n\n";
-                pagestr += "<p><em>by "+americaversed.poem().author+"</em></p>\n\n";
+                let pagestr = "<h2>"+_poem.title+"</h2>\n\n";
+                pagestr += "<p><em>by "+_poem.author+"</em></p>\n\n";
                 pagestr += "<div class='mapa-poem'>"+spacepoem.join("<br>")+"</div>\n";
                 smodal.querySelector(".mapa-modal-body").innerHTML = pagestr;
                 smodal.querySelector(".mapa-close").onclick = () => modal.remove();
@@ -93,7 +88,6 @@ const americaversed = (function() {
         for (let i = 0; i < nodesSnapshot.snapshotLength; i++) {
             let el = nodesSnapshot.snapshotItem(i)
 
-
             // prevent element from being re-mangled on future change
             if (el.classList.contains("mapa-managed") ) {
                 continue;
@@ -109,9 +103,11 @@ const americaversed = (function() {
             el.dataset.mapa_poem = el.innerHTML;
 
             // TODO remove this
+            /*
             el.addEventListener("click", function() {
                 return false;
             });
+            */
         }
     };
 
@@ -122,6 +118,58 @@ const americaversed = (function() {
             el.innerHTML = el.dataset['mapa_orig'];
             el.classList.remove("mapa-managed");
         }
+    }
+
+    // private
+    let getLines = function() {
+        let len = _poem.lines.length;
+        if (len <= 2) {
+            return _poem.lines.join("\n");
+        }
+
+        if (! this.count || this.count >= len) {
+            this.count=0;
+        }
+        let fragment;
+
+        lincount = this.count;
+        this.count += 2;
+        fragment = _poem.lines.slice(lincount, lincount+2);
+        return fragment.join(" / ");
+    }
+
+    let queueReparse = function() {
+        if (! _reparseWaiting) {
+            _reparseWaiting = setTimeout(() => { applyQueuedReparse(); }, 3000)
+        }
+    }
+
+    let applyQueuedReparse = function() {
+        console.log("SUCCESSFULLY APPLIED REPARSEWAITING")
+        applyOverwrite();
+        _reparseWaiting = false;
+    }
+
+    /**
+     * operations
+     */
+    let init = async () => {
+        let val = await browser.storage.sync.get("enabled");
+        _mainswitch = (! val.hasOwnProperty("enabled"))?true:val.enabled;
+        if (_mainswitch) {
+            _poem = await downloadPoem();
+        }
+    };
+
+    let run = function() {
+        if (! pageenabled() || ! _mainswitch) {
+            console.log("will not run - disabled");
+            console.log("local switch: "+americaversed.pageenabled());
+            console.log("main  switch: "+_mainswitch);
+            return;
+        }
+        americaversed.applyOverwrite();
+        mutationobserver.watch()
     }
 
     let tempReveal = function() {
@@ -146,40 +194,6 @@ const americaversed = (function() {
         _pageenabled = false;
     }
 
-    // private
-    let getLines = function() {
-        let len = _poem.lines.length;
-        if (len <= 2) {
-            return _poem.lines.join("\n");
-        }
-
-        if (! this.count || this.count >= len) {
-            this.count=0;
-        }
-        let fragment;
-
-        lincount = this.count;
-        this.count += 2;
-        fragment = _poem.lines.slice(lincount, lincount+2);
-        return fragment.join(" / ");
-    }
-    let reparseWaiting = false;
-    let queueReparse = function() {
-        if (! reparseWaiting) {
-            reparseWaiting = setTimeout(() => { applyQueuedReparse(); }, 3000)
-        }
-    }
-    let applyQueuedReparse = function() {
-        console.log("SUCCESSFULLY APPLIED REPARSEWAITING")
-        applyOverwrite();
-        reparseWaiting = false;
-    }
-
-    /**
-     * operations
-     */
-
-
     return {
         pageenabled: pageenabled,
         applyOverwrite: applyOverwrite,
@@ -187,57 +201,14 @@ const americaversed = (function() {
         tempRestore: tempRestore,
         disable: disable,
         buildPoemModal: buildPoemModal,
-        downloadPoem: downloadPoem,
         queueReparse: queueReparse,
         tearDown: tearDown,
-
-        // getsetters
-        poem: poem,
+        run: run,
+        init: init,
     };
-}());
+})();
 
 // findme
-
-/**
- * events and messaging
- */
-browser.runtime.onMessage.addListener(data => {
-  if (data.trigger === 'tempreveal') {
-    americaversed.tempReveal();
-    window.setTimeout(americaversed.tempRestore, 10000);
-  }
-
-  if (data.trigger === 'showpoem') {
-    americaversed.buildPoemModal();
-  }
-
-  if (data.trigger === 'menuchangestatusstate') {
-
-    console.log("data:");
-    console.log(data);
-
-    if (data.status && ! americaversed.pageenabled()) {
-        americaversed.pageenabled(true);
-        run();
-    } else {
-        americaversed.disable();
-        mutationobserver.unwatch();
-    }
-  }
-
-  if (data.trigger === 'poweroff') {
-    // run() checks whether to proceed
-    americaversed.tearDown();
-    mutationobserver.unwatch();
-  }
-
-  if (data.trigger === 'poweron') {
-    // run() checks whether to proceed
-    run();
-  }
-});
-
-
 const mutationobserver = (function() {
     // Select the node that will be observed for mutations
     let targetNode = document;
@@ -252,10 +223,10 @@ const mutationobserver = (function() {
                 console.log("A child node has been added or removed.");
                 americaversed.queueReparse(true);
             }
-    // else if (mutation.type === "attributes") {
-    //      console.log(`The ${mutation.attributeName} attribute was modified.`);
-    //      reparseswitch = true;
-    //    }
+            // else if (mutation.type === "attributes") {
+            //      console.log(`The ${mutation.attributeName} attribute was modified.`);
+            //      reparseswitch = true;
+            //    }
         }
     };
     // Create an observer instance linked to the callback function
@@ -278,61 +249,55 @@ const mutationobserver = (function() {
     }
 })();
 
-let run = function() {
-    browser.storage.sync.get("enabled").then(
-        function(val) {
-            let mainswitch = true;
-            if (! val.hasOwnProperty("enabled")) {
-                mainswitch = true;
-            } else {
-                mainswitch = val.enabled; 
-            }
-            //console.log(val);
-            //console.log("running with mainswitch: "+ mainswitch);
-            dorun(mainswitch);            
-        }
-    );
+/**
+ * events and messaging
+ */
+browser.runtime.onMessage.addListener(data => {
+  if (data.trigger === 'tempreveal') {
+    americaversed.tempReveal();
+    window.setTimeout(americaversed.tempRestore, 10000);
+  }
 
-    function dorun(mainswitch) {
-        if (! americaversed.pageenabled() || ! mainswitch) {
-            console.log("will not run - disabled");
-            console.log("local switch: "+americaversed.pageenabled());
-            console.log("main  switch: "+mainswitch);
-            return;
-        }
-        americaversed.applyOverwrite();
-        /*
-            console.log("applying");
-            americaversed.applyOverwrite();
+  if (data.trigger === 'showpoem') {
+    americaversed.buildPoemModal();
+  }
 
-        }
-        */
-        //window.setTimeout(run, 1000);
+  if (data.trigger === 'menuchangestatusstate') {
+
+    console.log("data:");
+    console.log(data);
+
+    if (data.status && ! americaversed.pageenabled()) {
+        americaversed.pageenabled(true);
+        americaversed.run();
+    } else {
+        americaversed.disable();
+        mutationobserver.unwatch();
     }
-}
+  }
+
+  if (data.trigger === 'poweroff') {
+    // run() checks whether to proceed
+    americaversed.tearDown();
+    mutationobserver.unwatch();
+  }
+
+  if (data.trigger === 'poweron') {
+    // run() checks whether to proceed
+    americaversed.run();
+  }
+});
+
 // send background script the enabled state (so that it shows the correct menu toggle)
 browser.runtime.sendMessage({
     trigger: "setEnabledState", setting: americaversed.pageenabled()
 });
 
-async function setPoem2(msg) {
-    americaversed.poem(msg);
-}
-
-// get poem, apply it, watch for page changes
-const loadAndRun = function() {
-    console.log("starting");
-    if (! americaversed.pageenabled()) {
-        return;
+/**
+ * kick things off
+ */
+americaversed.init().then(
+    () => {
+        americaversed.run();
     }
-    americaversed.downloadPoem()
-        .then(
-            msg => americaversed.poem(msg),
-        ).then(
-            () => run()
-        ).then(
-            () => mutationobserver.watch()
-        );
-}
-
-loadAndRun();
+);
