@@ -10,10 +10,7 @@ const americaversed = (function() {
      * accessors
      */
 
-    let pageenabled = function(val) {
-        if (typeof val !== 'undefined') {
-            _pageenabled = val;
-        }
+    let pageenabled = function() {
         return _pageenabled;
     };
 
@@ -179,6 +176,7 @@ const americaversed = (function() {
             let el = els[i];
             el.innerHTML = el.dataset['mapa_orig'];
         }
+        setTimeout(() => { tempRestore(); }, 10000)
     }
 
     let tempRestore = function() {
@@ -189,9 +187,31 @@ const americaversed = (function() {
         }
     }
 
-    let disable = function() {
-        tearDown();
+    let powerOn = function() {
+        _mainswitch = true;
+        run();
+    }
+
+    let powerOff = function() {
+        _mainswitch = false;
+        doDisable();
+    }
+    let enablePage = function() {
+        _pageenabled = true;
+        run();
+    }
+
+    let disablePage = function() {
+        doDisable();
         _pageenabled = false;
+    }
+
+    let doDisable = function() {
+        mutationobserver.unwatch();
+        if (_reparseWaiting) {
+            clearTimeout(_reparseWaiting );
+        }
+        tearDown();
     }
 
     return {
@@ -199,7 +219,10 @@ const americaversed = (function() {
         applyOverwrite: applyOverwrite,
         tempReveal: tempReveal,
         tempRestore: tempRestore,
-        disable: disable,
+        powerOn: powerOn,
+        powerOff: powerOff,
+        disablePage: disablePage,
+        enablePage: enablePage,
         buildPoemModal: buildPoemModal,
         queueReparse: queueReparse,
         tearDown: tearDown,
@@ -255,7 +278,6 @@ const mutationobserver = (function() {
 browser.runtime.onMessage.addListener(data => {
   if (data.trigger === 'tempreveal') {
     americaversed.tempReveal();
-    window.setTimeout(americaversed.tempRestore, 10000);
   }
 
   if (data.trigger === 'showpoem') {
@@ -268,23 +290,18 @@ browser.runtime.onMessage.addListener(data => {
     console.log(data);
 
     if (data.status && ! americaversed.pageenabled()) {
-        americaversed.pageenabled(true);
-        americaversed.run();
+        americaversed.enablePage();
     } else {
-        americaversed.disable();
-        mutationobserver.unwatch();
+        americaversed.disablePage();
     }
   }
 
   if (data.trigger === 'poweroff') {
-    // run() checks whether to proceed
-    americaversed.tearDown();
-    mutationobserver.unwatch();
+      americaversed.powerOff();
   }
 
   if (data.trigger === 'poweron') {
-    // run() checks whether to proceed
-    americaversed.run();
+    americaversed.powerOn();
   }
 });
 
