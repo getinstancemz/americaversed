@@ -2,7 +2,8 @@
 const americaversed = (function() {
     // private but settable
     let _pageenabled =  true;
-    let _poem =  { author: "bob", lines: ["the boy stood on the burning deck", "hats and hats and hats"], title: "the boy" };
+    //let _poem =  { author: "bob", lines: ["the boy stood on the burning deck", "hats and hats and hats"], title: "the boy" };
+    let _poem =  false;
     let _mainswitch = true;
     let _reparseWaiting = false;
 
@@ -14,6 +15,9 @@ const americaversed = (function() {
         return _pageenabled;
     };
 
+    let poweredDown = function() {
+        return _mainswitch;
+    }
     /**
      * poem related
      */
@@ -151,12 +155,18 @@ const americaversed = (function() {
      * operations
      */
     let init = async () => {
-        let val = await browser.storage.sync.get("enabled");
-        _mainswitch = (! val.hasOwnProperty("enabled"))?true:val.enabled;
-        if (_mainswitch) {
+        await checkPowerStorage();
+        if (_mainswitch && ! _poem) {
             _poem = await downloadPoem();
         }
+        return _mainswitch;
     };
+
+    let checkPowerStorage = async () => {
+        let val = await browser.storage.sync.get("enabled");
+        _mainswitch = (! val.hasOwnProperty("enabled"))?true:val.enabled;
+        return _mainswitch;
+    }
 
     let run = function() {
         if (! pageenabled() || ! _mainswitch) {
@@ -221,6 +231,7 @@ const americaversed = (function() {
         tempRestore: tempRestore,
         powerOn: powerOn,
         powerOff: powerOff,
+        poweredDown: poweredDown,
         disablePage: disablePage,
         enablePage: enablePage,
         buildPoemModal: buildPoemModal,
@@ -303,6 +314,17 @@ browser.runtime.onMessage.addListener(data => {
   if (data.trigger === 'poweron') {
     americaversed.powerOn();
   }
+  if (data.trigger === 'tabactivated') {
+      americaversed.init().then(
+          poweredup => {
+              if (! poweredup) {
+                  americaversed.powerOff();
+              } else {
+                  americaversed.run();
+              }
+          }
+      );
+  }
 });
 
 // send background script the enabled state (so that it shows the correct menu toggle)
@@ -310,11 +332,13 @@ browser.runtime.sendMessage({
     trigger: "setEnabledState", setting: americaversed.pageenabled()
 });
 
+
+
 /**
  * kick things off
  */
 americaversed.init().then(
     () => {
-        americaversed.run();
+        americaversed.poweredDown();
     }
 );

@@ -35,6 +35,12 @@ browser.contextMenus.create(
   }
 );
 
+browser.tabs.onActivated.addListener(
+    (info) => {
+        browser.tabs.sendMessage(info.tabId, { trigger: 'tabactivated' });
+    }
+)
+
 browser.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId == "america-versed-tempreveal") {
     browser.tabs.sendMessage(tab.id, { trigger: 'tempreveal' });
